@@ -10,20 +10,24 @@ function home() {
   crumb.textContent = 'Danh mục thí nghiệm';
   document.title = 'Phòng thí nghiệm Vật lí ảo';
   const items = CATALOG.filter((e) => e.grade === gradeFilter);
+  const ready = items.filter((e) => e.status === 'ready').length;
+  const chapters = [...new Set(items.map((e) => e.chapter))];
+  const card = (e) => `
+        <a class="exp ${e.status}" ${e.status === 'ready' ? `href="#${e.id}"` : 'aria-disabled="true"'}>
+          <div><span class="tag ${e.status}">${e.status === 'ready' ? 'Sẵn sàng' : 'Sắp có'}</span><span class="tag">${e.lesson}</span><span class="tag">Đợt ${e.wave}</span></div>
+          <h3 style="margin:8px 0 4px">${e.title}</h3>
+          <div class="muted">${e.topic}</div>
+        </a>`;
   app.innerHTML = `
     <h1>Phòng thí nghiệm Vật lí ảo</h1>
     <p class="muted">Mô phỏng tương tác cho KHTN 6, KHTN 9 và Vật lí 10 (sách Kết nối tri thức). Chạy trên máy tính và điện thoại.</p>
     <div class="chips" role="group" aria-label="Chọn lớp">
       ${GRADES.map((g) => `<button class="chip" data-g="${g.id}" aria-pressed="${g.id === gradeFilter}">${g.label}</button>`).join('')}
     </div>
-    <div class="cards">
-      ${items.map((e) => `
-        <a class="exp ${e.status}" ${e.status === 'ready' ? `href="#${e.id}"` : 'aria-disabled="true"'}>
-          <div><span class="tag ${e.status}">${e.status === 'ready' ? 'Sẵn sàng' : 'Sắp có'}</span><span class="tag">${e.lesson}</span></div>
-          <h3 style="margin:8px 0 4px">${e.title}</h3>
-          <div class="muted">${e.topic}</div>
-        </a>`).join('')}
-    </div>`;
+    <p class="muted">Đã có ${ready} / ${items.length} thí nghiệm. Đợt 1 là các bài ưu tiên xây dựng trước.</p>
+    ${chapters.map((c) => `
+      <h2 style="margin:22px 0 0;font-size:17px">${c}</h2>
+      <div class="cards">${items.filter((e) => e.chapter === c).map(card).join('')}</div>`).join('')}`;
   app.querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => { gradeFilter = b.dataset.g; home(); }));
 }
 
