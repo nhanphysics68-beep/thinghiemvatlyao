@@ -125,6 +125,11 @@ const KHTN6 = [
   ]),
 ];
 
-export const CATALOG = [...VL10, ...KHTN9, ...KHTN6].map((e) =>
-  e.id === 'vl10-b05' ? { ...e, status: 'ready', load: () => import('./experiments/vl10_b05/index.js') } : e
-);
+// Các bài đã có thí nghiệm. Thư mục: js/experiments/vl10_b09/index.js ứng với id 'vl10-b09'.
+export const READY = [
+  'vl10-b01', 'vl10-b02', 'vl10-b03', 'vl10-b04', 'vl10-b05', 'vl10-b06', 'vl10-b07', 'vl10-b08', 'vl10-b09', 'vl10-b10', 'vl10-b11', 'vl10-b12',
+  'vl10-b13', 'vl10-b14', 'vl10-b15', 'vl10-b16', 'vl10-b17', 'vl10-b18', 'vl10-b19', 'vl10-b20', 'vl10-b21', 'vl10-b22', 'vl10-b23', 'vl10-b24',
+  'vl10-b25', 'vl10-b26', 'vl10-b27', 'vl10-b28', 'vl10-b29', 'vl10-b30', 'vl10-b31', 'vl10-b32', 'vl10-b33', 'vl10-b34',
+];
+export const CATALOG = [...VL10, ...KHTN9, ...KHTN6].map((e) => READY.includes(e.id)
+  ? { ...e, status: 'ready', load: () => import(`./experiments/${e.id.replace('-b', '_b')}/index.js`) } : e);

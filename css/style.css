@@ -77,3 +77,7 @@ a.exp.soon { opacity: .6; cursor: default; pointer-events: none; }
 .sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 18px; margin-top: 10px; }
 .sliders label span { float: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .mathline { font-family: "Times New Roman", serif; font-size: 17px; }
+
+th { position: sticky; top: 0; }
+.tablewrap table { border-collapse: separate; border-spacing: 0; }
+select { max-width: 100%; }
