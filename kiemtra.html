@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiểm tra trực tuyến – Vật lí ảo</title>
+  <meta name="description" content="Làm bài kiểm tra trực tuyến, xem kết quả ngay sau khi nộp bài.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2714%27 fill=%27%231f6feb%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%274%27 fill=%27white%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .wrap.narrow { max-width: 760px; }
+    .field { display: grid; gap: 4px; margin: 10px 0; }
+    .field input, .field select { width: 100%; }
+    input[type=text], input[type=email], input[type=password], input[type=number] { min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); width: 100%; }
+    .qcard { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+    .qcard.ok { border-color: var(--ok); } .qcard.bad { border-color: var(--bad); } .qcard.part { border-color: #b7791f; }
+    .qhead { font-weight: 700; margin-bottom: 6px; }
+    .qtext img, .opt img { max-width: 100%; height: auto; }
+    .qtext p { margin: 0 0 6px; }
+    .qtext table { width: auto; margin: 6px 0; } .qtext td, .qtext th { text-align: left; border: 1px solid var(--line); }
+    .opt { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; margin: 6px 0; cursor: pointer; min-height: 44px; }
+    .opt input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+    .opt.sel { background: var(--accent-soft); border-color: var(--accent); }
+    .opt.right { background: var(--ok-soft); border-color: var(--ok); }
+    .opt.wrong { background: var(--bad-soft); border-color: var(--bad); }
+    .subrow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+    .tf { display: flex; gap: 6px; } .tf label { display: flex; gap: 4px; align-items: center; padding: 4px 10px; border: 1px solid var(--line); border-radius: 99px; min-height: 40px; cursor: pointer; }
+    .tf label.sel { background: var(--accent-soft); border-color: var(--accent); }
+    .tf input { width: 18px; height: 18px; }
+    .bar { position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--line); padding: 8px 16px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+    .timer { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 18px; }
+    .timer.low { color: var(--bad); }
+    .score { font-size: 44px; font-weight: 800; line-height: 1.1; }
+    .why { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 15px; }
+    .msg { padding: 10px 12px; border-radius: 10px; margin: 10px 0; font-size: 15px; }
+    .msg.bad { background: var(--bad-soft); color: var(--bad); } .msg.ok { background: var(--ok-soft); color: var(--ok); } .msg.info { background: var(--accent-soft); }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+    .tabs button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    .tbl th, .tbl td { text-align: left; } .tbl td.num, .tbl th.num { text-align: right; }
+    .tbl { margin-top: 8px; } .scroll { overflow: auto; max-height: 440px; border: 1px solid var(--line); border-radius: 10px; }
+    .prev-q { border-bottom: 1px solid var(--line); padding: 8px 0; font-size: 15px; }
+    .prev-q:last-child { border: 0; }
+    .warn { color: #b7791f; } .err { color: var(--bad); }
+    textarea.rules { width: 100%; min-height: 160px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; border: 1px solid var(--line); border-radius: 10px; padding: 8px; background: var(--card); color: var(--ink); }
+    details { margin: 10px 0; } summary { cursor: pointer; font-weight: 600; min-height: 36px; }
+    pre.tpl { background: var(--accent-soft); padding: 10px 12px; border-radius: 10px; overflow: auto; font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; }
+    @media print { header.top, .bar, button { display: none !important; } }
+  </style>
+</head>
+<body>
+  <header class="top"><div class="wrap">
+    <a class="brand" href="index.html">Vật lí ảo</a>
+    <span class="sub">Kiểm tra trực tuyến</span>
+    <a class="sub" href="#gv" style="margin-left:auto;color:inherit">Dành cho giáo viên</a>
+  </div></header>
+  <div id="bar"></div>
+  <main class="wrap narrow" id="app"></main>
+
+<script type="module">
+/* =====================================================================
+   KIỂM TRA TRỰC TUYẾN
+   - Học sinh: nhập họ tên, lớp, mã đề → làm bài → xem kết quả ngay.
+   - Giáo viên: tải đề (Word mẫu) + đáp án (Word hoặc Excel) → đăng đề → xem bảng điểm.
+   - Dữ liệu lưu ở Firebase Firestore (cùng dự án với web quản lý thiết bị).
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDZzLXwtVC7-HM-_ayrsdScMcPw15xSuAA", authDomain: "thietbi-8fe39.firebaseapp.com", projectId: "thietbi-8fe39",
+  storageBucket: "thietbi-8fe39.firebasestorage.app", messagingSenderId: "1074857754109", appId: "1:1074857754109:web:7550c9f5ae6180c7e46d94"
+};
+const FB = (m) => `https://www.gstatic.com/firebasejs/10.12.2/firebase-${m}.js`;
+const LIB_MAMMOTH = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+const LIB_XLSX = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const app = $('#app'), barEl = $('#bar');
+const loadScript = (src) => new Promise((res, rej) => {
+  if ([...document.scripts].some((s) => s.src === src)) return res();
+  const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Không tải được thư viện: ' + src)); document.head.appendChild(s);
+});
+const fmtN = (x, d = 2) => (Math.round(x * 10 ** d) / 10 ** d).toString().replace('.', ',');
+const pad2 = (n) => String(n).padStart(2, '0');
+const fmtTime = (d) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+const normCode = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9_-]/g, '');
+
+/* ---------------------------------------------------------------------
+   1. PHÂN TÍCH FILE WORD / EXCEL  (hàm thuần – kiểm thử được)
+   --------------------------------------------------------------------- */
+const TF_YES = /^(đ|đúng|d|true|t|1|x)$/i, TF_NO = /^(s|sai|false|f|0)$/i;
+const htmlToText = (h) => { const d = document.createElement('div'); d.innerHTML = h; return (d.textContent || '').replace(/\u00a0/g, ' ').trim(); };
+
+/** HTML (từ mammoth) → mảng đoạn {text, html, table?:[[cell]]} theo đúng thứ tự trong file. */
+function htmlToBlocks(html) {
+  const root = document.createElement('div'); root.innerHTML = html; const out = [];
+  [...root.children].forEach((el) => {
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'table') {
+      const rows = [...el.querySelectorAll('tr')].map((tr) => [...tr.children].map((c) => (c.textContent || '').replace(/\u00a0/g, ' ').trim()));
+      out.push({ text: '', html: el.outerHTML, table: rows });
+    } else if (tag === 'ul' || tag === 'ol') {
+      [...el.querySelectorAll('li')].forEach((li) => out.push({ text: (li.textContent || '').trim(), html: li.innerHTML }));
+    } else out.push({ text: (el.textContent || '').replace(/\u00a0/g, ' ').trim(), html: el.innerHTML });
+  });
+  return out.filter((b) => b.text || b.table || /<img/i.test(b.html));
+}
+
+/** Tách một dòng chứa nhiều phương án liên tiếp ("A. x   B. y   C. z   D. w") bắt đầu từ chữ cái `from`. */
+function splitOptions(text, from, re, order) {
+  const hits = []; let want = from, m; const rx = new RegExp(re, 'g');
+  while ((m = rx.exec(text))) { if (m[1] === order[want]) { hits.push({ at: m.index + (m[0].length - m[0].trimStart().length), end: m.index + m[0].length, L: m[1] }); want++; } }
+  if (!hits.length || hits[0].at > 0) return null;
+  return hits.map((h, i) => ({ L: h.L, text: text.slice(h.end, i + 1 < hits.length ? hits[i + 1].at : undefined).trim() }));
+}
+
+/** Đọc file câu hỏi → {questions, ctxs, warnings}. Mỗi câu: {n,type,q,opts?,sub?,ctx?} */
+function parseQuestions(blocks) {
+  const qs = [], ctxs = [], warn = []; let cur = null, last = null, ctx = null, skippedHead = 0;
+  const startRe = /^Câu\s*(\d+)\s*[.:)]?\s*/i;
+  const stripLead = (h) => h.replace(/^((?:\s|<[^>]+>)*)Câu\s*\d+\s*[.:)]?\s*/i, '$1');
+  const stripOpt = (h, re) => h.replace(new RegExp('^((?:\\s|<[^>]+>)*)' + re), '$1');
+  const ctxRe = /^(Dữ liệu|Dùng dữ liệu|Sử dụng dữ liệu|Đọc (đoạn|thông tin|bài)|Thông tin|Đề bài|Dựa vào)[^:]{0,40}\bCâu\s*(\d+)/i;
+  const O = 'ABCD', SO = 'abcd';
+  for (const b of blocks) {
+    const t = b.text;
+    if (b.table) {
+      const r0 = b.table[0] || [], c0 = String(r0[0] || '').trim().toLowerCase(), c1 = String(r0[1] || '').trim();
+      if (c0 === 'điểm' || (c0 === 'câu' && /^\d/.test(c1))) continue;            // bảng điểm / phiếu trả lời trên đề
+      const rows = b.table.filter((r) => /^[a-d]$/.test(String(r[0] || '').trim()) && String(r[1] || '').trim());
+      if (cur && rows.length >= 2 && cur.sub.length === 0) { rows.forEach((r) => { cur.sub.push({ L: String(r[0]).trim(), html: esc(String(r[1]).trim()) }); }); last = cur.sub[cur.sub.length - 1]; continue; }
+      if (ctx && !cur) ctx.html += b.html; else if (cur) cur.q += b.html;
+      continue;
+    }
+    if (/^(-+\s*)?(HẾT|---\s*HẾT)\b/i.test(t)) { cur = null; ctx = null; continue; }
+    if (/^(PHẦN\s+)?[IVX]+\s*[.):]\s+\S/.test(t) && !startRe.test(t) && t.length < 140) { ctx = null; continue; }      // tiêu đề phần
+    if (/^PHẦN\s+\d/i.test(t)) continue;
+    const mc = t.match(ctxRe);
+    if (mc && !startRe.test(t)) {
+      const head = t.split(':')[0]; const nums = new Set(); const rg = head.match(/(\d+)\s*(?:-|–|đến|->)\s*(\d+)/);
+      if (rg) for (let k = +rg[1]; k <= +rg[2]; k++) nums.add(k); (head.match(/\d+/g) || []).forEach((x) => nums.add(+x));
+      ctx = { id: 'c' + (ctxs.length + 1), nums: [...nums], html: '<p>' + b.html + '</p>' }; ctxs.push(ctx); cur = null; last = null; continue;
+    }
+    const ms = t.match(startRe);
+    if (ms) {
+      cur = { n: +ms[1], type: 'short', q: stripLead(b.html).trim(), opts: [], sub: [] }; qs.push(cur); last = cur;
+      if (ctx && ctx.nums.includes(cur.n)) cur.ctx = ctx.id;
+      continue;
+    }
+    if (!cur) {
+      if (ctx) { ctx.html += '<p>' + b.html + '</p>'; continue; }
+      if (t || /<img/i.test(b.html)) skippedHead++; continue;
+    }
+    if (/^[A-D]\s*[.)]/.test(t) && cur.opts.length < 4) {
+      const segs = splitOptions(t, cur.opts.length, '(?:^|\\s)([A-D])\\s*[.)]\\s*', O);
+      if (segs) {
+        if (segs.length === 1) { const o = { L: segs[0].L, html: stripOpt(b.html, segs[0].L + '\\s*[.)]\\s*') }; cur.opts.push(o); last = o; }
+        else segs.forEach((g) => { const o = { L: g.L, html: esc(g.text) }; cur.opts.push(o); last = o; });
+        continue;
+      }
+    }
+    if (/^[a-d]\s*\)/.test(t) && cur.sub.length < 4) {
+      const segs = splitOptions(t, cur.sub.length, '(?:^|\\s)([a-d])\\s*\\)\\s*', SO);
+      if (segs) {
+        if (segs.length === 1) { const o = { L: segs[0].L, html: stripOpt(b.html, segs[0].L + '\\s*\\)\\s*') }; cur.sub.push(o); last = o; }
+        else segs.forEach((g) => { const o = { L: g.L, html: esc(g.text) }; cur.sub.push(o); last = o; });
+        continue;
+      }
+    }
+    if (last === cur || !last) cur.q += '<p>' + b.html + '</p>'; else if (last && (cur.opts.includes(last) || cur.sub.includes(last))) { if (t) last.html += '<br>' + b.html; else last.html += b.html; } else cur.q += '<p>' + b.html + '</p>';
+  }
+  if (skippedHead) warn.push(`Bỏ qua ${skippedHead} đoạn đầu đề trước “Câu 1” (tên trường, họ tên…).`);
+  qs.forEach((q) => {
+    if (q.opts.length >= 2) { q.type = 'mcq'; if (q.opts.length !== 4) warn.push(`Câu ${q.n}: có ${q.opts.length} phương án (chuẩn là 4).`); }
+    else if (q.sub.length >= 2) { q.type = 'tf'; if (q.sub.length !== 4) warn.push(`Câu ${q.n}: có ${q.sub.length} ý đúng/sai (chuẩn là 4).`); }
+    if (!q.q.replace(/<[^>]+>/g, '').trim() && !/<img/i.test(q.q)) warn.push(`Câu ${q.n}: không có nội dung câu hỏi.`);
+  });
+  const seen = new Set(); qs.forEach((q) => { if (seen.has(q.n)) warn.push(`Số câu bị trùng: Câu ${q.n}.`); seen.add(q.n); });
+  return { questions: qs, ctxs: ctxs.filter((c) => qs.some((q) => q.ctx === c.id)), warnings: warn };
+}
+
+/** Đọc đáp án từ các dòng văn bản/bảng → mảng {n, cells:[], why, tol}. */
+function parseKeyLines(blocks) {
+  const out = []; let lastEntry = null;
+  const whyRe = /^(giải thích|lời giải|hướng dẫn|gợi ý)\s*[:：]\s*(.*)$/i;
+  for (const b of blocks) {
+    if (b.table) {
+      const h0 = b.table[0] || [], h1 = b.table[1] || [];
+      if (b.table.length >= 2 && /^câu$/i.test(String(h0[0]).trim()) && /^(đáp án|đáp số|kết quả)/i.test(String(h1[0]).trim()) && /^\d+[a-d]?$/i.test(String(h0[1]).trim())) {
+        const g = new Map();      // bảng ngang: Câu | 1 | 2 | … | 17a | 17b …  /  Đáp án | A | B | …
+        for (let i = 1; i < h0.length; i++) { const m = String(h0[i]).trim().match(/^(\d+)([a-d])?$/i); if (!m) continue; const n = +m[1]; if (!g.has(n)) { const e = { n, cells: [] }; g.set(n, e); out.push(e); lastEntry = e; } g.get(n).cells.push(String(h1[i] ?? '').trim()); }
+        continue;
+      }
+      let cols = null;
+      for (const row of b.table) {
+        const low = row.map((c) => c.toLowerCase());
+        if (low.some((c) => /^(đáp án|đáp số|kết quả)/.test(c)) && !/^\d/.test(row[0])) { cols = low; continue; }
+        const e = rowToEntry(row, cols); if (!e) continue;
+        if (e.subLetter) { const p = out.find((x) => x.n === e.n); if (p) { p.cells.push(...e.cells); continue; } }
+        out.push(e); lastEntry = e;
+      }
+      continue;
+    }
+    const t = b.text; if (!t) continue;
+    const w = t.match(whyRe); if (w && lastEntry) { lastEntry.why = w[2]; continue; }
+    // dạng gọn trên một dòng: "1.A 2.B 3.C ..." hoặc "1-A  2-B"
+    const compact = [...t.matchAll(/(?:^|[\s,;])(\d{1,3})\s*[.):\-–]\s*([A-D])(?=$|[\s,;.])/g)];
+    if (compact.length >= 2) { compact.forEach((m) => { const e = { n: +m[1], cells: [m[2]] }; out.push(e); lastEntry = e; }); continue; }
+    const m = t.match(/^(?:Câu\s*)?(\d{1,3})\s*[.:)\-–]?\s*(.*)$/i);
+    if (m && m[2] !== '') { const e = { n: +m[1], cells: [m[2]] }; out.push(e); lastEntry = e; }
+    else if (lastEntry && /^(giải|vì|do)\b/i.test(t)) lastEntry.why = (lastEntry.why ? lastEntry.why + ' ' : '') + t;
+  }
+  return out;
+}
+function rowToEntry(row, cols) {
+  const first = String(row[0] ?? '').trim(); const mm = first.match(/^(?:Câu\s*)?(\d{1,3})([a-d])?\b/i); if (!mm) return null;
+  const e = { n: +mm[1], cells: [] }; if (mm[2]) e.subLetter = mm[2];
+  const idx = (re) => cols ? cols.findIndex((c) => re.test(c)) : -1;
+  const ia = idx(/^(đáp án|đáp số|kết quả)/), iw = idx(/(giải thích|lời giải|hướng dẫn|gợi ý)/), it = idx(/(sai số|dung sai)/);
+  const cell = (i) => String(row[i] ?? '').trim();
+  if (ia >= 0) {
+    e.cells.push(cell(ia));
+    for (let i = ia + 1; i < ia + 4 && i < row.length && (TF_YES.test(cell(ia)) || TF_NO.test(cell(ia))); i++) { if (TF_YES.test(cell(i)) || TF_NO.test(cell(i))) e.cells.push(cell(i)); else break; }
+  } else {
+    let i = 1; e.cells.push(cell(1)); i = 2;
+    while (i < 5 && i < row.length && (TF_YES.test(cell(i)) || TF_NO.test(cell(i))) && (TF_YES.test(cell(1)) || TF_NO.test(cell(1)))) { e.cells.push(cell(i)); i++; }
+    const rest = row.slice(i).map((c) => String(c ?? '').trim()).filter(Boolean); if (rest[0]) e.why = rest[0];
+  }
+  const inRun = (i) => ia >= 0 && i > ia && i < ia + e.cells.length; // các ô Đ/S nằm đè lên cột giải thích/sai số
+  if (iw >= 0 && !inRun(iw) && cell(iw)) e.why = cell(iw);
+  if (it >= 0 && !inRun(it) && cell(it)) e.tolRaw = cell(it);
+  return e;
+}
+
+const parseNum = (s) => { const x = String(s ?? '').trim().replace(/\s+/g, '').replace(',', '.'); if (!/^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(x)) return NaN; return parseFloat(x); };
+
+/** Gắn đáp án vào câu hỏi theo số câu; kiểm tra định dạng. */
+function attachKey(questions, entries) {
+  const warn = [], byN = new Map(); entries.forEach((e) => { if (byN.has(e.n)) warn.push(`Đáp án Câu ${e.n} xuất hiện nhiều lần – dùng bản đầu tiên.`); else byN.set(e.n, e); });
+  const qn = new Set(questions.map((q) => q.n)); byN.forEach((e, n) => { if (!qn.has(n)) warn.push(`Có đáp án cho Câu ${n} nhưng đề không có câu này.`); });
+  let ok = 0;
+  for (const q of questions) {
+    const e = byN.get(q.n); delete q.ans; delete q.why; delete q.tol;
+    if (!e) { warn.push(`Câu ${q.n}: chưa có đáp án.`); continue; }
+    const joined = e.cells.join(' ').trim(); if (e.why) q.why = e.why;
+    if (q.type === 'mcq') {
+      const m = joined.match(/\b([A-D])\b/i) || joined.match(/^([A-D])/i);
+      if (!m) { warn.push(`Câu ${q.n} (trắc nghiệm): đáp án “${joined}” không phải A, B, C hoặc D.`); continue; }
+      q.ans = m[1].toUpperCase(); ok++;
+    } else if (q.type === 'tf') {
+      let toks = joined.match(/đúng|sai|true|false|[đĐsSdDtTfF01]/gi) || [];
+      if (!toks.length) toks = [];
+      // dạng "a-Đ b-S": bỏ chữ cái a-d đứng trước dấu - hoặc )
+      const cleaned = joined.replace(/\b[a-d]\s*[-–)=:]\s*/gi, ' ');
+      toks = cleaned.match(/đúng|sai|true|false|[đĐsStTfFdD01]/gi) || [];
+      const vals = toks.map((t) => (TF_YES.test(t) ? 1 : TF_NO.test(t) ? 0 : null));
+      if (vals.length !== q.sub.length || vals.includes(null)) { warn.push(`Câu ${q.n} (đúng/sai): cần ${q.sub.length} giá trị Đ/S, đọc được “${joined}”.`); continue; }
+      q.ans = vals.join(''); ok++;
+    } else {
+      const parts = joined.split(/\s*(?:;|\bhoặc\b|\|)\s*/i).map((s) => s.trim()).filter(Boolean);
+      let tol = null; const main = [];
+      for (let p of parts) { const pm = p.match(/^(.*?)\s*(?:±|\+\/-)\s*([\d.,]+)\s*\)?$/); if (pm) { main.push(pm[1].replace(/[()]/g, '')); tol = parseNum(pm[2]); } else main.push(p); }
+      if (e.tolRaw) { const t = parseNum(e.tolRaw.replace('±', '')); if (!isNaN(t)) tol = t; }
+      if (!main.length) { warn.push(`Câu ${q.n} (trả lời ngắn): đáp án trống.`); continue; }
+      q.ans = main.join(';'); if (tol != null && !isNaN(tol)) q.tol = tol; ok++;
+      if (main.every((x) => isNaN(parseNum(x)))) warn.push(`Câu ${q.n}: đáp án “${q.ans}” không phải số – sẽ so khớp chữ (không phân biệt hoa/thường).`);
+    }
+  }
+  return { warnings: warn, ok };
+}
+
+/* ---------------------------------------------------------------------
+   2. CHẤM ĐIỂM
+   --------------------------------------------------------------------- */
+const TF_TABLE = [0, 0.1, 0.25, 0.5, 1]; // 0,1,2,3,4 ý đúng (thang điểm đề minh họa của Bộ GD&ĐT)
+function gradeQuestion(q, a) {
+  if (q.type === 'mcq') { const r = a === q.ans; return { got: r ? 1 : 0, state: r ? 'ok' : 'bad' }; }
+  if (q.type === 'tf') {
+    const key = q.ans || '', mine = a || ''; let c = 0; for (let i = 0; i < key.length; i++) if (mine[i] === key[i]) c++;
+    const n = key.length, got = n === 4 ? TF_TABLE[c] : (n ? c / n : 0);
+    return { got, c, n, state: c === n ? 'ok' : c === 0 ? 'bad' : 'part' };
+  }
+  const mine = String(a ?? '').trim(); if (!mine) return { got: 0, state: 'bad' };
+  const accepted = String(q.ans || '').split(';'); const v = parseNum(mine);
+  let r = false;
+  for (const x of accepted) {
+    const k = parseNum(x);
+    if (!isNaN(k) && !isNaN(v)) { if (Math.abs(v - k) <= Math.max(q.tol || 0, 1e-9 * Math.max(1, Math.abs(k)))) r = true; }
+    else if (isNaN(k) && x.trim().toLowerCase() === mine.toLowerCase()) r = true;
+  }
+  return { got: r ? 1 : 0, state: r ? 'ok' : 'bad' };
+}
+function gradeAll(questions, answers) {
+  let sum = 0, correct = 0; const per = {};
+  for (const q of questions) { const g = gradeQuestion(q, answers[q.n]); per[q.n] = g; sum += g.got; if (g.state === 'ok') correct++; }
+  return { score: questions.length ? Math.round((sum / questions.length) * 1000) / 100 : 0, correct, total: questions.length, per };
+}
+
+/* ---------------------------------------------------------------------
+   3. TẠO FILE MẪU .docx (không cần thư viện – ghi zip kiểu "store")
+   --------------------------------------------------------------------- */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }; })();
+function zipStore(files) {
+  const enc = new TextEncoder(), parts = [], cd = []; let off = 0;
+  const u16 = (v) => [v & 255, (v >> 8) & 255], u32 = (v) => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
+  for (const [name, text] of files) {
+    const nb = enc.encode(name), data = enc.encode(text), crc = CRC(data);
+    const lh = new Uint8Array([0x50, 0x4b, 3, 4, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nb.length), 0, 0]);
+    parts.push(lh, nb, data);
+    cd.push(new Uint8Array([0x50, 0x4b, 1, 2, 20, 0, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nb.length), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(off)]), nb);
+    off += lh.length + nb.length + data.length;
+  }
+  const cdLen = cd.reduce((s, a) => s + a.length, 0);
+  const end = new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...u16(files.length), ...u16(files.length), ...u32(cdLen), ...u32(off), 0, 0]);
+  return new Blob([...parts, ...cd, end], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+function makeDocx(paras) {
+  const x = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const body = paras.map((p) => { const b = typeof p === 'object' ? p : { t: p }; return `<w:p>${b.bold ? '<w:pPr><w:keepNext/></w:pPr>' : ''}<w:r><w:rPr>${b.bold ? '<w:b/>' : ''}</w:rPr><w:t xml:space="preserve">${x(b.t)}</w:t></w:r></w:p>`; }).join('');
+  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+  return zipStore([
+    ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>'],
+    ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'],
+    ['word/_rels/document.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+    ['word/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${NS}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman"/><w:sz w:val="26"/><w:szCs w:val="26"/><w:lang w:val="vi-VN"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="80" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults></w:styles>`],
+    ['word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1418" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>`],
+  ]);
+}
+const TPL_Q = [
+  { t: 'ĐỀ KIỂM TRA MẪU – VẬT LÍ 10', bold: true },
+  'Quy ước: mỗi câu bắt đầu bằng “Câu 1.”, “Câu 2.”… Dạng câu hỏi được nhận tự động theo cách trình bày bên dưới. Có thể xóa các đoạn hướng dẫn này.',
+  { t: 'PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (mỗi câu có 4 phương án A, B, C, D, mỗi dòng một phương án)', bold: true },
+  'Câu 1. Một vật chuyển động thẳng đều với tốc độ 5 m/s. Quãng đường vật đi được sau 4 s là',
+  'A. 1,25 m.', 'B. 9 m.', 'C. 20 m.', 'D. 40 m.',
+  'Câu 2. Đại lượng nào sau đây là đại lượng vectơ?',
+  'A. Quãng đường.', 'B. Độ dịch chuyển.', 'C. Tốc độ.', 'D. Thời gian.',
+  { t: 'PHẦN II. Câu trắc nghiệm đúng sai (mỗi câu có 4 ý a), b), c), d), mỗi dòng một ý)', bold: true },
+  'Câu 3. Một ô tô xuất phát từ trạng thái nghỉ, chuyển động thẳng nhanh dần đều với gia tốc 2 m/s². Xét các phát biểu sau:',
+  'a) Sau 3 s, vận tốc của ô tô là 6 m/s.', 'b) Quãng đường ô tô đi được sau 3 s là 18 m.', 'c) Gia tốc của ô tô không đổi trong quá trình chuyển động.', 'd) Vận tốc của ô tô tỉ lệ nghịch với thời gian chuyển động.',
+  { t: 'PHẦN III. Câu trả lời ngắn (không có phương án A, B, C, D hay ý a, b, c, d; học sinh điền số)', bold: true },
+  'Câu 4. Một vật rơi tự do từ độ cao 80 m. Lấy g = 10 m/s². Thời gian rơi của vật là bao nhiêu giây?',
+  'Câu 5. Một xe chạy với tốc độ trung bình 54 km/h. Tính tốc độ này theo đơn vị m/s.',
+];
+const TPL_KEY_DOCX = [
+  { t: 'ĐÁP ÁN MẪU (Word)', bold: true },
+  'Quy ước: mỗi dòng một câu theo dạng “Câu n: đáp án”. Có thể thêm dòng “Giải thích: …” ngay dưới câu để hiện cho học sinh sau khi nộp bài.',
+  'Câu 1: C', 'Giải thích: s = v.t = 5 × 4 = 20 m.',
+  'Câu 2: B', 'Giải thích: Độ dịch chuyển có hướng nên là đại lượng vectơ.',
+  'Câu 3: Đúng, Sai, Đúng, Sai', 'Giải thích: v = a.t = 6 m/s; s = ½.a.t² = 9 m; a không đổi; v tỉ lệ thuận với t.',
+  'Câu 4: 4', 'Giải thích: h = ½.g.t² nên t = √(2h/g) = 4 s.',
+  'Câu 5: 15 ± 0,1', 'Giải thích: 54 km/h = 54/3,6 = 15 m/s. (Phần “± 0,1” là sai số cho phép, có thể bỏ.)',
+  'Cũng có thể viết gọn trắc nghiệm trên một dòng: 1.C 2.B',
+];
+
+/* ---------------------------------------------------------------------
+   4. LỚP DỮ LIỆU (Firestore) – có thể thay bằng window.__KT_DB khi kiểm thử
+   --------------------------------------------------------------------- */
+const DB = {
+  fs: null, auth: null, A: null, F: null, user: null, isAdmin: false,
+  async init(withAuth) {
+    if (window.__KT_DB) return window.__KT_DB;
+    if (!this.fs) {
+      const [App, F] = await Promise.all([import(FB('app')), import(FB('firestore'))]);
+      this.F = F; const a = App.initializeApp(FIREBASE_CONFIG); this.fs = F.getFirestore(a); this.app = a;
+    }
+    if (withAuth && !this.auth) {
+      const A = await import(FB('auth')); this.A = A; this.auth = A.getAuth(this.app);
+      await new Promise((res) => A.onAuthStateChanged(this.auth, async (u) => { this.user = u; this.isAdmin = false; if (u) { try { const s = await this.F.getDoc(this.F.doc(this.fs, 'users', u.uid)); this.isAdmin = !!(s.exists() && s.data().role === 'admin' && !s.data().disabled); } catch (e) { console.warn(e); } } if (this._cb) this._cb(); res(); }));
+    }
+    return this;
+  },
+  onAuth(cb) { this._cb = cb; },
+  async getTest(code) { const s = await this.F.getDoc(this.F.doc(this.fs, 'tests', code)); return s.exists() ? s.data() : null; },
+  async listTests() { const s = await this.F.getDocs(this.F.collection(this.fs, 'tests')); return s.docs.map((d) => d.data()).sort((a, b) => (b.createdMs || 0) - (a.createdMs || 0)); },
+  async saveTest(t) { await this.F.setDoc(this.F.doc(this.fs, 'tests', t.code), JSON.parse(JSON.stringify(t))); }, // loại bỏ giá trị undefined
+  async setOpen(code, open) { await this.F.updateDoc(this.F.doc(this.fs, 'tests', code), { open }); },
+  async addResult(code, r) { await this.F.addDoc(this.F.collection(this.fs, 'tests', code, 'results'), { ...r, at: this.F.serverTimestamp() }); },
+  async listResults(code) { const s = await this.F.getDocs(this.F.collection(this.fs, 'tests', code, 'results')); return s.docs.map((d) => { const x = d.data(); return { id: d.id, ...x, atMs: x.at && x.at.toMillis ? x.at.toMillis() : 0 }; }).sort((a, b) => a.atMs - b.atMs); },
+  async deleteTest(code) { const s = await this.F.getDocs(this.F.collection(this.fs, 'tests', code, 'results')); for (const d of s.docs) await this.F.deleteDoc(d.ref); await this.F.deleteDoc(this.F.doc(this.fs, 'tests', code)); },
+  async signIn(email, pw) { await this.A.signInWithEmailAndPassword(this.auth, email, pw); },
+  async signOut() { await this.A.signOut(this.auth); },
+};
+const dbMsg = (e) => {
+  const c = (e && e.code) || '';
+  if (c.includes('permission-denied')) return 'Không có quyền truy cập dữ liệu. Giáo viên cần dán Rules mới vào Firebase (xem mục “Cài đặt lần đầu”).';
+  if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found') return 'Sai email hoặc mật khẩu.';
+  if (c === 'auth/too-many-requests') return 'Thử quá nhiều lần, hãy đợi một lát.';
+  if (c === 'unavailable' || /network/i.test(e && e.message)) return 'Không kết nối được máy chủ. Hãy kiểm tra mạng.';
+  return (e && e.message) || String(e);
+};
+
+/* ---------------------------------------------------------------------
+   5. GIAO DIỆN HỌC SINH
+   --------------------------------------------------------------------- */
+let timerId = null, leaveGuard = null;
+const clearTimer = () => { if (timerId) clearInterval(timerId); timerId = null; barEl.innerHTML = ''; if (leaveGuard) { window.removeEventListener('beforeunload', leaveGuard); leaveGuard = null; } };
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function viewEnter(prefill = {}, msg = '') {
+  clearTimer(); document.title = 'Kiểm tra trực tuyến – Vật lí ảo';
+  app.innerHTML = `
+    <h1>Kiểm tra trực tuyến</h1>
+    <p class="muted">Nhập thông tin và mã đề do giáo viên cung cấp. Kết quả hiện ngay sau khi nộp bài.</p>
+    ${msg ? `<div class="msg bad">${esc(msg)}</div>` : ''}
+    <form class="card" id="f" autocomplete="off">
+      <div class="field"><label for="nm">Họ và tên</label><input type="text" id="nm" required maxlength="80" value="${esc(prefill.name || '')}" placeholder="Nguyễn Văn A"></div>
+      <div class="field"><label for="cl">Lớp</label><input type="text" id="cl" required maxlength="20" value="${esc(prefill.cls || '')}" placeholder="10A1"></div>
+      <div class="field"><label for="cd">Mã đề</label><input type="text" id="cd" required maxlength="30" value="${esc(prefill.code || '')}" placeholder="VL10-001" style="text-transform:uppercase"></div>
+      <button class="primary" type="submit" style="width:100%">Vào làm bài</button>
+    </form>`;
+  $('#f').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const name = $('#nm').value.trim().replace(/\s+/g, ' '), cls = $('#cl').value.trim(), code = normCode($('#cd').value);
+    const btn = ev.target.querySelector('button'); btn.disabled = true; btn.textContent = 'Đang tải đề…';
+    try {
+      const db = await DB.init(false); const t = await (db.getTest ? db.getTest(code) : DB.getTest(code));
+      if (!t) return viewEnter({ name, cls, code }, 'Không tìm thấy đề có mã “' + code + '”. Hãy kiểm tra lại mã đề.');
+      if (t.noKey) return viewEnter({ name, cls, code }, 'Đề này chưa sẵn sàng (giáo viên chưa nhập đáp án).');
+      if (t.open === false) return viewEnter({ name, cls, code }, 'Đề này hiện đã đóng.');
+      viewIntro(t, { name, cls });
+    } catch (e) { viewEnter({ name, cls, code }, dbMsg(e)); }
+  });
+}
+
+function viewIntro(t, who) {
+  const cnt = { mcq: 0, tf: 0, short: 0 }; t.questions.forEach((q) => cnt[q.type]++);
+  app.innerHTML = `
+    <h1>${esc(t.title)}</h1>
+    <div class="card">
+      <p><b>Học sinh:</b> ${esc(who.name)} – lớp ${esc(who.cls)}</p>
+      <p><b>Số câu:</b> ${t.questions.length} (${cnt.mcq} trắc nghiệm, ${cnt.tf} đúng/sai, ${cnt.short} trả lời ngắn)</p>
+      <p><b>Thời gian:</b> ${t.minutes ? t.minutes + ' phút – hết giờ hệ thống tự nộp bài' : 'không giới hạn'}</p>
+      <p class="muted">Điểm tính trên thang 10: mỗi câu có trọng số như nhau; câu đúng/sai tính theo số ý đúng (1 ý: 0,1; 2 ý: 0,25; 3 ý: 0,5; 4 ý: 1 phần trọng số).</p>
+      <div class="row"><button class="primary" id="go">Bắt đầu làm bài</button><button id="back">Quay lại</button></div>
+    </div>`;
+  $('#back').onclick = () => viewEnter({ name: who.name, cls: who.cls, code: t.code });
+  $('#go').onclick = () => viewExam(t, who);
+}
+
+function viewExam(t, who) {
+  const started = Date.now();
+  let order = t.questions.slice(); if (t.shuffleQ) order = shuffle(order);
+  const optOrder = {}; order.forEach((q) => { if (q.type === 'mcq') optOrder[q.n] = t.shuffleO ? shuffle(q.opts.map((_, i) => i)) : q.opts.map((_, i) => i); });
+  const ans = {}; let submitted = false, armed = false;
+  const answered = (q) => { const a = ans[q.n]; if (q.type === 'tf') return a && a.length === q.sub.length && !a.includes('-'); return a !== undefined && String(a).trim() !== ''; };
+  document.title = t.title;
+  app.innerHTML = `<h1>${esc(t.title)}</h1><p class="muted">${esc(who.name)} – lớp ${esc(who.cls)}</p><div id="qs"></div>
+    <div class="card"><div id="sumline" class="muted"></div><button class="primary" id="sub" style="width:100%;margin-top:8px">Nộp bài</button><div id="subnote" class="msg info" style="display:none"></div></div>`;
+  const qs = $('#qs');
+  order.forEach((q, idx) => {
+    const c = document.createElement('div'); c.className = 'qcard'; c.id = 'q' + q.n;
+    const cx = q.ctx && (t.ctxs || []).find((c) => c.id === q.ctx); const prevQ = order[idx - 1]; const showCx = cx && !(prevQ && prevQ.ctx === q.ctx);
+    let h = (showCx ? `<div class="why qtext" style="margin:0 0 10px">${cx.html}</div>` : '') + `<div class="qhead">Câu ${idx + 1}</div><div class="qtext">${q.q}</div>`;
+    if (q.type === 'mcq') h += optOrder[q.n].map((oi, pos) => `<label class="opt"><input type="radio" name="q${q.n}" value="${q.opts[oi].L}"><span><b>${'ABCD'[pos]}.</b> ${q.opts[oi].html}</span></label>`).join('');
+    else if (q.type === 'tf') { ans[q.n] = '-'.repeat(q.sub.length); h += q.sub.map((s, i) => `<div class="subrow"><div><b>${'abcd'[i]})</b> ${s.html}</div><div class="tf"><label><input type="radio" name="q${q.n}_${i}" value="1">Đúng</label><label><input type="radio" name="q${q.n}_${i}" value="0">Sai</label></div></div>`).join(''); }
+    else h += `<div class="field"><label for="a${q.n}">Đáp án (nhập số; dùng dấu phẩy hoặc dấu chấm thập phân)</label><input type="text" id="a${q.n}" inputmode="decimal" autocomplete="off" maxlength="40"></div>`;
+    c.innerHTML = h; qs.appendChild(c);
+  });
+  const refresh = () => { const done = t.questions.filter(answered).length; $('#sumline').textContent = `Đã trả lời ${done} / ${t.questions.length} câu.`; barEl.querySelector('#prog') && (barEl.querySelector('#prog').textContent = `${done}/${t.questions.length} câu`); };
+  qs.addEventListener('input', (ev) => {
+    const el = ev.target, m = el.name && el.name.match(/^q(\d+)(?:_(\d))?$/);
+    if (m) {
+      const n = +m[1];
+      if (m[2] === undefined) { ans[n] = el.value; el.closest('.qcard').querySelectorAll('.opt').forEach((o) => o.classList.toggle('sel', o.querySelector('input').checked)); }
+      else { const i = +m[2]; let a = ans[n].split(''); a[i] = el.value; ans[n] = a.join(''); el.closest('.subrow').querySelectorAll('.tf label').forEach((l) => l.classList.toggle('sel', l.querySelector('input').checked)); }
+    } else if (el.id && el.id.startsWith('a')) ans[+el.id.slice(1)] = el.value;
+    armed = false; $('#subnote').style.display = 'none'; refresh();
+  });
+  barEl.innerHTML = `<div class="bar"><div><b>${esc(who.name)}</b> · <span id="prog"></span></div><div class="timer" id="tm"></div></div>`;
+  refresh();
+  leaveGuard = (e) => { if (!submitted) { e.preventDefault(); e.returnValue = ''; } }; window.addEventListener('beforeunload', leaveGuard);
+
+  const finish = async (auto) => {
+    if (submitted) return; submitted = true; clearInterval(timerId); timerId = null;
+    $('#sub').disabled = true; $('#sub').textContent = 'Đang nộp bài…';
+    const g = gradeAll(t.questions, ans); const dur = Math.round((Date.now() - started) / 1000);
+    const compact = {}; t.questions.forEach((q) => { compact[q.n] = ans[q.n] === undefined ? '' : String(ans[q.n]); });
+    let saved = true, err = '';
+    try { const db = await DB.init(false); await (db.addResult ? db.addResult(t.code, { name: who.name, cls: who.cls, title: t.title, score: g.score, correct: g.correct, total: g.total, durationSec: dur, ans: compact }) : DB.addResult(t.code, { name: who.name, cls: who.cls, title: t.title, score: g.score, correct: g.correct, total: g.total, durationSec: dur, ans: compact })); }
+    catch (e) { saved = false; err = dbMsg(e); }
+    clearTimer(); viewResult(t, who, ans, g, optOrder, order, dur, saved, err, auto);
+  };
+  $('#sub').onclick = () => {
+    const left = t.questions.length - t.questions.filter(answered).length;
+    if (left > 0 && !armed) { armed = true; const n = $('#subnote'); n.style.display = 'block'; n.textContent = `Bạn còn ${left} câu chưa trả lời. Bấm “Nộp bài” lần nữa để xác nhận nộp.`; return; }
+    finish(false);
+  };
+  if (t.minutes) {
+    const end = started + t.minutes * 60000; const tick = () => { const left = Math.max(0, Math.ceil((end - Date.now()) / 1000)); const tm = $('#tm'); if (tm) { tm.textContent = `${pad2(Math.floor(left / 60))}:${pad2(left % 60)}`; tm.classList.toggle('low', left <= 60); } if (left <= 0) finish(true); };
+    tick(); timerId = setInterval(tick, 500);
+  } else $('#tm').textContent = 'Không giới hạn thời gian';
+}
+
+function viewResult(t, who, ans, g, optOrder, order, dur, saved, err, auto) {
+  window.scrollTo(0, 0); document.title = 'Kết quả – ' + t.title;
+  const st = { ok: '✔ Đúng', bad: '✖ Sai', part: '◐ Đúng một phần' };
+  const items = order.map((q, idx) => {
+    const r = g.per[q.n]; let body = '';
+    if (q.type === 'mcq') {
+      body = optOrder[q.n].map((oi, pos) => { const L = q.opts[oi].L, cls = L === q.ans ? 'right' : (L === ans[q.n] ? 'wrong' : ''); return `<div class="opt ${cls}"><span><b>${'ABCD'[pos]}.</b> ${q.opts[oi].html}${L === q.ans ? ' &nbsp;<b>✔ đáp án đúng</b>' : L === ans[q.n] ? ' &nbsp;<b>← bạn chọn</b>' : ''}</span></div>`; }).join('');
+    } else if (q.type === 'tf') {
+      body = q.sub.map((s, i) => { const mine = (ans[q.n] || '')[i], key = q.ans[i], ok = mine === key; return `<div class="subrow"><div><b>${'abcd'[i]})</b> ${s.html}</div><div><b class="${ok ? '' : 'err'}">${mine === '1' ? 'Đúng' : mine === '0' ? 'Sai' : 'Bỏ trống'}</b> · đáp án: <b>${key === '1' ? 'Đúng' : 'Sai'}</b> ${ok ? '✔' : '✖'}</div></div>`; }).join('');
+      body += `<div class="muted">Đúng ${r.c}/${r.n} ý → ${fmtN(r.got)} / 1 điểm của câu.</div>`;
+    } else body = `<div class="muted">Bạn trả lời: <b>${esc(ans[q.n] || 'bỏ trống')}</b> · Đáp án: <b>${esc(String(q.ans).replace(/;/g, ' hoặc '))}</b>${q.tol ? ' (sai số cho phép ± ' + fmtN(q.tol, 4) + ')' : ''}</div>`;
+    const cx2 = q.ctx && (t.ctxs || []).find((c) => c.id === q.ctx); const showCx2 = cx2 && !(order[idx - 1] && order[idx - 1].ctx === q.ctx);
+    return `<div class="qcard ${r.state}">${showCx2 ? `<div class="why qtext" style="margin:0 0 10px">${cx2.html}</div>` : ''}<div class="qhead">Câu ${idx + 1} – ${st[r.state]}</div><div class="qtext">${q.q}</div>${body}${q.why ? `<div class="why"><b>Giải thích:</b> ${esc(q.why)}</div>` : ''}</div>`;
+  }).join('');
+  const m = Math.floor(dur / 60), s = dur % 60;
+  app.innerHTML = `
+    <h1>Kết quả bài làm</h1>
+    <div class="card"><div class="muted">${esc(who.name)} – lớp ${esc(who.cls)} · ${esc(t.title)}</div>
+      <div class="score">${fmtN(g.score)} <span style="font-size:20px;font-weight:600">/ 10 điểm</span></div>
+      <p>Đúng hoàn toàn <b>${g.correct}</b> / ${g.total} câu · thời gian làm bài ${m} phút ${s} giây${auto ? ' (hết giờ, hệ thống tự nộp)' : ''}.</p>
+      ${saved ? '<div class="msg ok">Bài làm đã được gửi cho giáo viên.</div>' : `<div class="msg bad">Không gửi được bài làm cho giáo viên (${esc(err)}). Hãy chụp màn hình kết quả này và báo giáo viên.</div>`}
+      <div class="row"><button class="primary" onclick="location.hash='';location.reload()">Về trang đầu</button><button onclick="window.print()">In / lưu PDF</button></div></div>
+    <h2 style="margin-top:20px">Xem lại từng câu</h2>${items}`;
+}
+
+/* ---------------------------------------------------------------------
+   6. GIAO DIỆN GIÁO VIÊN
+   --------------------------------------------------------------------- */
+const RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function adminDoc() { return /databases/$(db)/documents/meta/admin; }
+    function userDoc(u) { return /databases/$(db)/documents/users/$(u); }
+    function isAdmin() {
+      return signedIn() && (
+        (exists(adminDoc()) && get(adminDoc()).data.uid == request.auth.uid) ||
+        (exists(userDoc(request.auth.uid)) && get(userDoc(request.auth.uid)).data.role == 'admin'));
+    }
+    function active() {
+      return signedIn() && !(exists(userDoc(request.auth.uid)) && get(userDoc(request.auth.uid)).data.disabled == true);
+    }
+    match /meta/admin {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.disabled == false &&
+        (request.resource.data.role == 'user' ||
+         (exists(adminDoc()) && get(adminDoc()).data.uid == request.auth.uid));
+      allow update, delete: if isAdmin();
+    }
+    match /schools/{id} {
+      allow read: if true;
+      allow write: if active();
+    }
+    // ---- Kiểm tra trực tuyến ----
+    match /tests/{code} {
+      allow get: if true;
+      allow list, create, update, delete: if isAdmin();
+      match /results/{rid} {
+        allow create: if request.resource.data.name is string && request.resource.data.name.size() <= 80
+                      && request.resource.data.cls is string && request.resource.data.cls.size() <= 20
+                      && request.resource.data.score is number && request.resource.data.score >= 0 && request.resource.data.score <= 10
+                      && request.resource.data.at == request.time;
+        allow read, delete: if isAdmin();
+      }
+    }
+  }
+}
+`;
+
+let gvTab = 'new', draft = null;
+const dl = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); };
+const shareUrl = (code) => location.origin + location.pathname + '#thi/' + code;
+
+async function viewTeacher() {
+  clearTimer(); document.title = 'Giáo viên – Kiểm tra trực tuyến';
+  app.innerHTML = '<p class="muted">Đang kết nối…</p>';
+  let db; try { db = await DB.init(true); } catch (e) { app.innerHTML = `<div class="msg bad">${esc(dbMsg(e))}</div>`; return; }
+  DB.onAuth(() => { if (location.hash === '#gv') viewTeacher(); });
+  if (!window.__KT_DB && !DB.user) return viewLogin();
+  if (!window.__KT_DB && !DB.isAdmin) { app.innerHTML = `<h1>Giáo viên</h1><div class="msg bad">Tài khoản ${esc(DB.user.email)} chưa có quyền quản trị. Hãy đăng nhập bằng tài khoản admin của web quản lý thiết bị (admin có thể cấp quyền ở mục Tài khoản bên đó).</div><button id="lo">Đăng xuất</button>`; $('#lo').onclick = () => DB.signOut(); return; }
+  renderTeacher();
+}
+function viewLogin(msg = '') {
+  app.innerHTML = `<h1>Dành cho giáo viên</h1><p class="muted">Đăng nhập bằng tài khoản admin của web quản lý thiết bị (cùng hệ thống tài khoản).</p>
+    ${msg ? `<div class="msg bad">${esc(msg)}</div>` : ''}
+    <form class="card" id="lf"><div class="field"><label for="em">Email</label><input type="email" id="em" required autocomplete="username"></div>
+    <div class="field"><label for="pw">Mật khẩu</label><input type="password" id="pw" required autocomplete="current-password"></div>
+    <button class="primary" style="width:100%">Đăng nhập</button></form>`;
+  $('#lf').onsubmit = async (ev) => { ev.preventDefault(); try { await DB.signIn($('#em').value.trim(), $('#pw').value); } catch (e) { viewLogin(dbMsg(e)); } };
+}
+
+function renderTeacher() {
+  app.innerHTML = `<h1>Giáo viên – Kiểm tra trực tuyến</h1>
+    <div class="row" style="justify-content:space-between"><span class="muted">${esc(DB.user ? DB.user.email : 'chế độ thử')}</span>${DB.user ? '<button class="small" id="lo">Đăng xuất</button>' : ''}</div>
+    <div class="tabs">${[['new', 'Tạo đề mới'], ['list', 'Đề đã đăng & kết quả'], ['help', 'Hướng dẫn, mẫu & cài đặt']].map(([k, l]) => `<button data-t="${k}" aria-pressed="${gvTab === k}">${l}</button>`).join('')}</div>
+    <div id="tab"></div>`;
+  if (DB.user) $('#lo').onclick = () => DB.signOut();
+  app.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { gvTab = b.dataset.t; renderTeacher(); });
+  ({ new: tabNew, list: tabList, help: tabHelp })[gvTab]($('#tab'));
+}
+
+function tabHelp(el) {
+  el.innerHTML = `
+    <div class="card"><h2>Tải file mẫu</h2>
+      <p class="muted">File mẫu dùng phông Times New Roman cỡ 13. Soạn đề theo đúng cách trình bày trong mẫu để hệ thống đọc tự động.</p>
+      <div class="row"><button id="d1">Đề mẫu (.docx)</button><button id="d2">Đáp án mẫu (.docx)</button><button id="d3">Đáp án mẫu (.xlsx)</button></div></div>
+    <div class="card"><h2>Quy ước soạn đề (Word)</h2>
+      <pre class="tpl">Câu 1. Nội dung câu hỏi…
+A. phương án A      ← trắc nghiệm: 4 dòng A, B, C, D
+B. …
+C. …
+D. …
+
+Câu 2. Nội dung (có các ý đúng/sai)
+a) ý thứ nhất       ← đúng/sai: 4 dòng a), b), c), d)
+b) …
+
+Câu 3. Nội dung, học sinh điền số   ← trả lời ngắn: không có A-D, a-d</pre>
+      <p class="muted">Hình ảnh dán trong Word được giữ nguyên (nên dùng ảnh nhỏ; tổng dung lượng đề không quá khoảng 900 KB). Công thức nên gõ bằng ký tự thường/ký tự Unicode (v₀, ½at², Δt, ω…); công thức dạng Equation của Word không đọc được.</p></div>
+    <div class="card"><h2>Quy ước đáp án</h2>
+      <pre class="tpl">Word:   Câu 1: C
+        Câu 2: Đúng, Sai, Đúng, Sai      (hoặc ĐSĐS, hoặc a-Đ b-S c-Đ d-S)
+        Câu 3: 12,5 ± 0,1                (± sai số cho phép, có thể bỏ; nhiều đáp án cách nhau bởi “;”)
+        Giải thích: …                    (tùy chọn, ngay dưới câu; hiện cho học sinh sau khi nộp)
+        Hoặc gọn: 1.C 2.B 3.A …
+
+Excel:  Câu | Đáp án | Giải thích | Sai số        (dòng đầu là tiêu đề)
+        1    | C      | …
+        2    | Đ | S | Đ | S                     (đúng/sai: 4 ô liên tiếp hoặc 1 ô “ĐSĐS”)</pre></div>
+    <div class="card"><h2>Cài đặt lần đầu (chỉ làm một lần)</h2>
+      <p>Để học sinh làm bài không cần tài khoản và giáo viên xem được bảng điểm, cần thêm quy tắc cho 2 bộ sưu tập mới <code>tests</code> và <code>tests/…/results</code>. Mở <b>Firebase Console → Firestore Database → Rules</b>, dán toàn bộ nội dung bên dưới (đã gồm cả quy tắc cũ của web thiết bị), rồi bấm <b>Publish</b>.</p>
+      <div class="row"><button id="cr" class="primary">Sao chép Rules</button></div>
+      <details><summary>Xem nội dung Rules</summary><textarea class="rules" readonly>${esc(RULES)}</textarea></details>
+      <p class="muted">Lưu ý: học sinh tải được đề cùng đáp án về trình duyệt để hệ thống chấm ngay tại máy; đề phù hợp cho kiểm tra thường xuyên/luyện tập, không phải thi chính thức có giám sát.</p></div>`;
+  $('#d1').onclick = () => dl(makeDocx(TPL_Q), 'de-mau.docx');
+  $('#d2').onclick = () => dl(makeDocx(TPL_KEY_DOCX), 'dap-an-mau.docx');
+  $('#d3').onclick = async () => {
+    try { await loadScript(LIB_XLSX); const rows = [['Câu', 'Đáp án', 'Giải thích', 'Sai số'], [1, 'C', 's = v.t = 5 × 4 = 20 m'], [2, 'B', 'Độ dịch chuyển có hướng'], [3, 'ĐSĐS', 'Rơi tự do là chuyển động nhanh dần đều'], [4, '4', 't = √(2h/g) = 4 s'], [5, '15', '54/3,6 = 15 m/s', 0.1]];
+      const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{ wch: 8 }, { wch: 10 }, { wch: 40 }, { wch: 10 }]; XLSX.utils.book_append_sheet(wb, ws, 'DapAn'); XLSX.writeFile(wb, 'dap-an-mau.xlsx'); } catch (e) { alert(e.message); }
+  };
+  $('#cr').onclick = () => navigator.clipboard.writeText(RULES).then(() => { $('#cr').textContent = 'Đã sao chép ✔'; }).catch(() => { el.querySelector('details').open = true; });
+}
+
+async function readKeyFile(fk) {
+  await loadScript(LIB_MAMMOTH);
+  if (/\.docx$/i.test(fk.name)) { const kres = await mammoth.convertToHtml({ arrayBuffer: await fk.arrayBuffer() }); return parseKeyLines(htmlToBlocks(kres.value)); }
+  await loadScript(LIB_XLSX); const wb = XLSX.read(await fk.arrayBuffer(), { type: 'array' });
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: false }); return parseKeyLines([{ text: '', html: '', table: rows }]);
+}
+
+function tabNew(el) {
+  const d = draft || {};
+  el.innerHTML = `
+    <div class="card"><h2><span class="step">1</span>Thông tin đề</h2>
+      <div class="field"><label for="ti">Tên bài kiểm tra</label><input type="text" id="ti" value="${esc(d.title || '')}" placeholder="Kiểm tra 15 phút – Chương 2. Động học"></div>
+      <div class="grid2"><div class="field"><label for="co">Mã đề (học sinh nhập mã này)</label><input type="text" id="co" value="${esc(d.code || 'VL' + Math.floor(100 + Math.random() * 900))}" style="text-transform:uppercase"></div>
+      <div class="field"><label for="mi">Thời gian làm bài (phút, 0 = không giới hạn)</label><input type="number" id="mi" min="0" max="300" value="${d.minutes ?? 15}"></div></div>
+      <label class="chk"><input type="checkbox" id="sq" ${d.shuffleQ ? 'checked' : ''}> Trộn thứ tự câu hỏi cho mỗi học sinh</label>
+      <label class="chk"><input type="checkbox" id="so" ${d.shuffleO ? 'checked' : ''}> Trộn thứ tự phương án A–D của câu trắc nghiệm</label></div>
+    <div class="card"><h2><span class="step">2</span>Tải file</h2>
+      <div class="field"><label for="fq">File câu hỏi (Word .docx theo mẫu)</label><input type="file" id="fq" accept=".docx"></div>
+      <div class="field"><label for="fk">File đáp án (Word .docx hoặc Excel .xlsx/.xls/.csv) – có thể để trống, đăng đề trước và bổ sung đáp án sau</label><input type="file" id="fk" accept=".docx,.xlsx,.xls,.csv"></div>
+      <button class="primary" id="rd">Đọc file &amp; xem trước</button><div id="pv"></div></div>`;
+  $('#rd').onclick = async () => {
+    const pv = $('#pv'); const fq = $('#fq').files[0], fk = $('#fk').files[0];
+    if (!fq) { pv.innerHTML = '<div class="msg bad">Hãy chọn file câu hỏi (Word).</div>'; return; }
+    pv.innerHTML = '<div class="msg info">Đang đọc file…</div>';
+    try {
+      await loadScript(LIB_MAMMOTH);
+      const qres = await mammoth.convertToHtml({ arrayBuffer: await fq.arrayBuffer() });
+      const P = parseQuestions(htmlToBlocks(qres.value)); if (!P.questions.length) throw new Error('Không tìm thấy câu hỏi nào. Mỗi câu phải bắt đầu bằng “Câu 1.”, “Câu 2.”…');
+      const K = fk ? attachKey(P.questions, await readKeyFile(fk)) : { warnings: [] };
+      const used = new Set(P.questions.map((q) => q.ctx).filter(Boolean)); const test = { title: $('#ti').value.trim(), ctxs: P.ctxs.map((c) => ({ id: c.id, html: c.html })), code: normCode($('#co').value), minutes: Math.max(0, +$('#mi').value || 0), shuffleQ: $('#sq').checked, shuffleO: $('#so').checked, questions: P.questions.map((q) => { const o = { n: q.n, type: q.type, q: q.q, ans: q.ans }; if (q.ctx) o.ctx = q.ctx; if (q.type === 'mcq') o.opts = q.opts; if (q.type === 'tf') o.sub = q.sub; if (q.why) o.why = q.why; if (q.tol != null) o.tol = q.tol; return o; }) };
+      draft = { title: test.title, code: test.code, minutes: test.minutes, shuffleQ: test.shuffleQ, shuffleO: test.shuffleO };
+      showPreview(pv, test, !fk, [...P.warnings, ...K.warnings, ...qres.messages.filter((m) => m.type === 'warning' && !/Unrecognised|style/i.test(m.message)).slice(0, 3).map((m) => 'Word: ' + m.message)]);
+    } catch (e) { pv.innerHTML = `<div class="msg bad">${esc(e.message || e)}</div>`; }
+  };
+}
+
+function showPreview(pv, test, noKey, warnings) {
+  const missing = noKey ? 0 : test.questions.filter((q) => q.ans === undefined).length, size = new Blob([JSON.stringify(test)]).size;
+  const cnt = { mcq: 0, tf: 0, short: 0 }; test.questions.forEach((q) => cnt[q.type]++);
+  const tn = { mcq: 'Trắc nghiệm', tf: 'Đúng/Sai', short: 'Trả lời ngắn' };
+  const ansTxt = (q) => q.ans === undefined ? (noKey ? '<span class="warn">chưa có (bổ sung sau)</span>' : '<span class="err">chưa có</span>') : q.type === 'tf' ? q.ans.split('').map((c) => c === '1' ? 'Đ' : 'S').join(' ') : esc(String(q.ans).replace(/;/g, ' hoặc ')) + (q.tol ? ' (± ' + q.tol + ')' : '');
+  const problems = [];
+  if (!test.title) problems.push('Chưa nhập tên bài kiểm tra.'); if (!test.code) problems.push('Mã đề chỉ gồm chữ không dấu, số, dấu - hoặc _.');
+  if (missing) problems.push(`${missing} câu chưa có đáp án hợp lệ.`); if (size > 950000) problems.push(`Đề quá lớn (${Math.round(size / 1024)} KB). Hãy giảm kích thước hình ảnh (giới hạn khoảng 900 KB).`);
+  pv.innerHTML = `
+    <h3>Kết quả đọc file</h3>
+    <div class="msg ${problems.length ? 'bad' : 'ok'}">${noKey ? 'Chưa chọn file đáp án: đề sẽ được lưu ở trạng thái <b>chờ đáp án</b> (học sinh chưa làm được cho đến khi bạn bổ sung đáp án). ' : ''}${test.questions.length} câu: ${cnt.mcq} trắc nghiệm · ${cnt.tf} đúng/sai · ${cnt.short} trả lời ngắn. Dung lượng ${Math.round(size / 1024)} KB.${problems.length ? '<br>' + problems.map(esc).join('<br>') : ''}</div>
+    ${warnings.length ? `<details ${problems.length ? 'open' : ''}><summary class="warn">${warnings.length} cảnh báo</summary><ul>${warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></details>` : ''}
+    <details open><summary>Xem lại từng câu và đáp án đã đọc</summary><div class="scroll" style="padding:0 12px">${test.questions.map((q) => `<div class="prev-q"><b>Câu ${q.n}</b> <span class="tag">${tn[q.type]}</span> <b>Đáp án: ${ansTxt(q)}</b>
+      <div class="qtext">${q.q}</div>${q.type === 'mcq' ? q.opts.map((o) => `<div>${o.L}. ${o.html}</div>`).join('') : ''}${q.type === 'tf' ? q.sub.map((o) => `<div>${o.L}) ${o.html}</div>`).join('') : ''}${q.why ? `<div class="muted">Giải thích: ${esc(q.why)}</div>` : ''}</div>`).join('')}</div></details>
+    <div class="row" style="margin-top:12px"><button class="primary" id="pub" ${problems.length ? 'disabled' : ''}>${noKey ? 'Lưu đề (chờ đáp án)' : 'Đăng đề'}</button><span class="muted">Học sinh sẽ vào bằng mã <b>${esc(test.code)}</b>.</span></div><div id="pubmsg"></div>`;
+  $('#pub').onclick = async () => {
+    const pm = $('#pubmsg'), btn = $('#pub'); btn.disabled = true; pm.innerHTML = '';
+    try {
+      const db = await DB.init(true); const get = db.getTest ? db.getTest.bind(db) : DB.getTest.bind(DB);
+      const ex = await get(test.code);
+      if (ex && !btn.dataset.ok) { btn.dataset.ok = '1'; btn.disabled = false; btn.textContent = 'Mã đã tồn tại – bấm để ghi đè'; pm.innerHTML = `<div class="msg bad">Đã có đề mã ${esc(test.code)} (“${esc(ex.title)}”). Bấm lần nữa để ghi đè, hoặc đổi mã đề.</div>`; return; }
+      const doc = { ...test, open: !noKey, noKey: !!noKey, createdMs: Date.now(), owner: DB.user ? DB.user.uid : '' };
+      await (db.saveTest ? db.saveTest(doc) : DB.saveTest(doc));
+      pm.innerHTML = noKey ? `<div class="msg ok">Đã lưu đề mã <b>${esc(test.code)}</b>. Khi có đáp án, vào thẻ “Đề đã đăng &amp; kết quả” → “Bổ sung đáp án”.</div>` : `<div class="msg ok">Đã đăng đề. Gửi học sinh liên kết sau (hoặc chỉ cần mã đề):<br><b id="lk">${esc(shareUrl(test.code))}</b> <button class="small" id="cp">Sao chép</button></div>`;
+      if ($('#cp')) $('#cp').onclick = () => navigator.clipboard.writeText(shareUrl(test.code)).then(() => { $('#cp').textContent = 'Đã chép ✔'; });
+      draft = null; btn.textContent = 'Đã đăng';
+    } catch (e) { btn.disabled = false; pm.innerHTML = `<div class="msg bad">${esc(dbMsg(e))}</div>`; }
+  };
+}
+
+async function tabList(el) {
+  el.innerHTML = '<p class="muted">Đang tải…</p>';
+  try {
+    const db = await DB.init(true); const tests = await (db.listTests ? db.listTests() : DB.listTests());
+    if (!tests.length) { el.innerHTML = '<div class="card">Chưa có đề nào. Hãy tạo đề ở thẻ “Tạo đề mới”.</div>'; return; }
+    el.innerHTML = tests.map((t) => `<div class="card" data-code="${esc(t.code)}"><div class="row" style="justify-content:space-between"><div><b>${esc(t.title)}</b><div class="muted">Mã <b>${esc(t.code)}</b> · ${t.questions.length} câu · ${t.minutes ? t.minutes + ' phút' : 'không giới hạn'} · ${t.createdMs ? fmtTime(new Date(t.createdMs)) : ''}</div></div><span class="tag ${t.noKey ? '' : t.open === false ? '' : 'ready'}">${t.noKey ? 'Chờ đáp án' : t.open === false ? 'Đã đóng' : 'Đang mở'}</span></div>
+      <div class="row" style="margin-top:8px">${t.noKey ? '<button class="small primary" data-a="key">Bổ sung đáp án</button>' : '<button class="small" data-a="res">Xem kết quả</button><button class="small" data-a="tog">' + (t.open === false ? 'Mở lại' : 'Đóng đề') + '</button>'}<button class="small" data-a="lnk">Sao chép liên kết</button><button class="small" data-a="del">Xóa đề</button></div><div class="out"></div></div>`).join('');
+    el.querySelectorAll('.card').forEach((card) => {
+      const code = card.dataset.code, t = tests.find((x) => x.code === code), out = card.querySelector('.out');
+      card.querySelectorAll('button').forEach((b) => b.onclick = async () => {
+        try {
+          if (b.dataset.a === 'lnk') { await navigator.clipboard.writeText(shareUrl(code)); b.textContent = 'Đã chép ✔'; }
+          else if (b.dataset.a === 'tog') { await (db.setOpen ? db.setOpen(code, t.open === false) : DB.setOpen(code, t.open === false)); tabList(el); }
+          else if (b.dataset.a === 'del') { if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Bấm lần nữa để xóa (kèm toàn bộ kết quả)'; return; } await (db.deleteTest ? db.deleteTest(code) : DB.deleteTest(code)); tabList(el); }
+          else if (b.dataset.a === 'res') showResults(out, t, db);
+          else if (b.dataset.a === 'key') {
+            out.innerHTML = '<div class="field"><label>Chọn file đáp án (Word hoặc Excel)</label><input type="file" accept=".docx,.xlsx,.xls,.csv"></div><div class="kmsg"></div>';
+            out.querySelector('input').onchange = async (ev) => {
+              const km = out.querySelector('.kmsg'); km.innerHTML = '<div class="msg info">Đang đọc…</div>';
+              try {
+                const K = attachKey(t.questions, await readKeyFile(ev.target.files[0])); const miss = t.questions.filter((q) => q.ans === undefined).length;
+                if (miss) { km.innerHTML = `<div class="msg bad">Còn ${miss} câu chưa có đáp án hợp lệ:<ul>${K.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></div>`; return; }
+                t.noKey = false; t.open = true; await (db.saveTest ? db.saveTest(t) : DB.saveTest(t));
+                km.innerHTML = `<div class="msg ok">Đã lưu đáp án (${K.ok} câu) và mở đề. Mã đề: <b>${esc(t.code)}</b>.${K.warnings.length ? '<br>Cảnh báo: ' + K.warnings.map(esc).join('; ') : ''}</div>`; setTimeout(() => tabList(el), 1500);
+              } catch (e) { km.innerHTML = `<div class="msg bad">${esc(dbMsg(e))}</div>`; }
+            };
+          }
+        } catch (e) { out.innerHTML = `<div class="msg bad">${esc(dbMsg(e))}</div>`; }
+      });
+    });
+  } catch (e) { el.innerHTML = `<div class="msg bad">${esc(dbMsg(e))}</div>`; }
+}
+
+async function showResults(out, t, db) {
+  out.innerHTML = '<p class="muted">Đang tải kết quả…</p>';
+  const rs = await (db.listResults ? db.listResults(t.code) : DB.listResults(t.code));
+  if (!rs.length) { out.innerHTML = '<div class="msg info">Chưa có học sinh nào nộp bài.</div>'; return; }
+  const avg = rs.reduce((s, r) => s + r.score, 0) / rs.length;
+  const mm = (r) => `${Math.floor(r.durationSec / 60)}′${pad2(r.durationSec % 60)}″`;
+  const bins = [0, 0, 0, 0]; rs.forEach((r) => { bins[r.score >= 8 ? 0 : r.score >= 6.5 ? 1 : r.score >= 5 ? 2 : 3]++; });
+  // tỉ lệ đúng theo câu
+  const stat = t.questions.map((q) => { let sum = 0; rs.forEach((r) => { sum += gradeQuestion(q, (r.ans || {})[q.n]).got; }); return { n: q.n, p: sum / rs.length }; });
+  out.innerHTML = `<div class="msg info">${rs.length} bài nộp · điểm trung bình <b>${fmtN(avg)}</b> · Giỏi (≥8): ${bins[0]} · Khá (6,5–7,9): ${bins[1]} · Trung bình (5–6,4): ${bins[2]} · Dưới 5: ${bins[3]}</div>
+    <div class="row"><button class="small" id="ex">Xuất Excel</button></div>
+    <div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>Họ và tên</th><th>Lớp</th><th class="num">Điểm</th><th class="num">Câu đúng</th><th>Thời gian</th><th>Nộp lúc</th></tr></thead><tbody>
+    ${rs.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.cls)}</td><td class="num"><b>${fmtN(r.score)}</b></td><td class="num">${r.correct}/${r.total}</td><td>${mm(r)}</td><td>${r.atMs ? fmtTime(new Date(r.atMs)) : ''}</td></tr>`).join('')}</tbody></table></div>
+    <h3>Tỉ lệ làm đúng theo câu (câu nào nhiều học sinh sai cần ôn lại)</h3>
+    <div class="scroll"><table class="tbl"><thead><tr><th>Câu</th><th class="num">Tỉ lệ đúng</th></tr></thead><tbody>${stat.map((s) => `<tr><td>Câu ${s.n}</td><td class="num">${Math.round(s.p * 100)}%</td></tr>`).join('')}</tbody></table></div>`;
+  $('#ex', out).onclick = async () => {
+    await loadScript(LIB_XLSX);
+    const rows = [['STT', 'Họ và tên', 'Lớp', 'Điểm', 'Số câu đúng', 'Tổng số câu', 'Thời gian (giây)', 'Nộp lúc']].concat(rs.map((r, i) => [i + 1, r.name, r.cls, r.score, r.correct, r.total, r.durationSec, r.atMs ? fmtTime(new Date(r.atMs)) : '']));
+    const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{ wch: 5 }, { wch: 26 }, { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'KetQua'); XLSX.writeFile(wb, `ket-qua-${t.code}.xlsx`);
+  };
+}
+
+/* ---------------------------------------------------------------------
+   7. ĐỊNH TUYẾN
+   --------------------------------------------------------------------- */
+async function route() {
+  const h = location.hash.replace(/^#/, '');
+  if (h === 'gv') return viewTeacher();
+  const m = h.match(/^thi\/(.+)$/);
+  viewEnter(m ? { code: normCode(decodeURIComponent(m[1])) } : {});
+}
+window.addEventListener('hashchange', route);
+window.KT = { parseQuestions, parseKeyLines, attachKey, gradeQuestion, gradeAll, htmlToBlocks, makeDocx, route };
+route();
+</script>
+</body>
+</html>
